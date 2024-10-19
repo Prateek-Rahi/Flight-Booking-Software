@@ -1,0 +1,226 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
+public class TicketBookingForm extends JFrame implements ActionListener {
+
+    private JLabel numPassengersLabel, sourceLabel, destinationLabel;
+    private JTextField numPassengersField, sourceField, destinationField;
+    private JButton proceedButton, submitButton, resetButton;
+    private JPanel mainPanel, passengerPanel;
+    private JScrollPane scrollPane;
+    private JTextArea outputArea;
+
+    private int numPassengers;
+    private JTextField[] nameFields;
+    private JTextField[] ageFields;
+    private JRadioButton[] maleRadioButtons;
+    private JRadioButton[] femaleRadioButtons;
+    private JComboBox<String>[] ticketTypeDropdowns;
+
+    public TicketBookingForm() {
+        // Initial frame setup
+        setTitle("Ticket Booking Form");
+        setSize(600, 600);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        // Main panel for everything
+        mainPanel = new JPanel();
+        mainPanel.setLayout(new BorderLayout());
+
+        // Panel for the number of passengers input
+        JPanel numPanel = new JPanel(new FlowLayout());
+        numPassengersLabel = new JLabel("Enter number of passengers: ");
+        numPassengersField = new JTextField(5);
+        proceedButton = new JButton("Proceed");
+
+        sourceLabel = new JLabel("Source Location: ");
+        sourceField = new JTextField(15);
+        destinationLabel = new JLabel("Destination Location: ");
+        destinationField = new JTextField(15);
+
+        proceedButton.addActionListener(this);
+
+        numPanel.add(numPassengersLabel);
+        numPanel.add(numPassengersField);
+        numPanel.add(sourceLabel);
+        numPanel.add(sourceField);
+        numPanel.add(destinationLabel);
+        numPanel.add(destinationField);
+        numPanel.add(proceedButton);
+
+        // Add numPanel to the main panel
+        mainPanel.add(numPanel, BorderLayout.NORTH);
+
+        // Panel to hold passenger details, we will wrap this in a scroll pane
+        passengerPanel = new JPanel();
+        passengerPanel.setLayout(new GridBagLayout()); // More structured layout
+
+        scrollPane = new JScrollPane(passengerPanel);
+        scrollPane.setPreferredSize(new Dimension(550, 300));
+
+        // Add the scroll pane to the main panel
+        mainPanel.add(scrollPane, BorderLayout.CENTER);
+
+        // Text area for output at the bottom
+        outputArea = new JTextArea(10, 40);
+        outputArea.setEditable(false);
+        JScrollPane outputScrollPane = new JScrollPane(outputArea);
+        mainPanel.add(outputScrollPane, BorderLayout.SOUTH);
+
+        // Add mainPanel to frame and set visible
+        add(mainPanel);
+        setVisible(true);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource() == proceedButton) {
+            // Get number of passengers
+            try {
+                numPassengers = Integer.parseInt(numPassengersField.getText());
+                if (numPassengers <= 0) {
+                    JOptionPane.showMessageDialog(this, "Please enter a valid number of passengers.", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(this, "Invalid number format.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            // Clear previous fields
+            passengerPanel.removeAll();
+
+            // Initialize arrays to store passenger details
+            nameFields = new JTextField[numPassengers];
+            ageFields = new JTextField[numPassengers];
+            maleRadioButtons = new JRadioButton[numPassengers];
+            femaleRadioButtons = new JRadioButton[numPassengers];
+            ticketTypeDropdowns = (JComboBox<String>[]) new JComboBox<?>[numPassengers];
+
+            GridBagConstraints gbc = new GridBagConstraints();
+            gbc.insets = new Insets(5, 5, 5, 5); // Padding between components
+            gbc.fill = GridBagConstraints.HORIZONTAL;
+            gbc.anchor = GridBagConstraints.WEST;
+
+            // Dynamically generate input fields for each passenger
+            for (int i = 0; i < numPassengers; i++) {
+                gbc.gridx = 0;
+                gbc.gridy = i;
+                JLabel passengerLabel = new JLabel("Passenger " + (i + 1) + ":");
+                passengerPanel.add(passengerLabel, gbc);
+
+                gbc.gridx = 1;
+                nameFields[i] = new JTextField(15);
+                passengerPanel.add(new JLabel("Name:"), gbc);
+                gbc.gridx = 2;
+                passengerPanel.add(nameFields[i], gbc);
+
+                gbc.gridx = 1;
+                gbc.gridy = i + numPassengers;
+                ageFields[i] = new JTextField(5);
+                passengerPanel.add(new JLabel("Age:"), gbc);
+                gbc.gridx = 2;
+                passengerPanel.add(ageFields[i], gbc);
+
+                gbc.gridx = 1;
+                gbc.gridy = i + (numPassengers * 2);
+                maleRadioButtons[i] = new JRadioButton("Male");
+                femaleRadioButtons[i] = new JRadioButton("Female");
+                ButtonGroup genderGroup = new ButtonGroup();
+                genderGroup.add(maleRadioButtons[i]);
+                genderGroup.add(femaleRadioButtons[i]);
+
+                JPanel genderPanel = new JPanel();
+                genderPanel.add(maleRadioButtons[i]);
+                genderPanel.add(femaleRadioButtons[i]);
+
+                passengerPanel.add(new JLabel("Gender:"), gbc);
+                gbc.gridx = 2;
+                passengerPanel.add(genderPanel, gbc);
+
+                gbc.gridx = 1;
+                gbc.gridy = i + (numPassengers * 3);
+                String[] ticketTypes = {"Regular", "VIP", "Student", "Senior"};
+                ticketTypeDropdowns[i] = new JComboBox<>(ticketTypes);
+                passengerPanel.add(new JLabel("Ticket Type:"), gbc);
+                gbc.gridx = 2;
+                passengerPanel.add(ticketTypeDropdowns[i], gbc);
+            }
+
+            // Add submit and reset buttons
+            submitButton = new JButton("Submit");
+            resetButton = new JButton("Reset");
+
+            submitButton.addActionListener(this);
+            resetButton.addActionListener(this);
+
+            gbc.gridx = 0;
+            gbc.gridy = numPassengers * 4;
+            gbc.gridwidth = 1;
+            passengerPanel.add(submitButton, gbc);
+
+            gbc.gridx = 1;
+            passengerPanel.add(resetButton, gbc);
+
+            revalidate(); // Refresh the UI
+            repaint();
+        } else if (e.getSource() == submitButton) {
+            // Collect passenger details and insert into database
+            String sourceLocation = sourceField.getText();
+            String destinationLocation = destinationField.getText();
+
+            if (sourceLocation.isEmpty() || destinationLocation.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Please enter both source and destination locations.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            // Database connection setup
+            try (Connection conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/tbooking", "root", "pr@4325#prateek%")) {
+                String query = "INSERT INTO tbooking.passenger (name, age, gender, ticket_type, source, destination) VALUES (?, ?, ?, ?, ?, ?)";
+                PreparedStatement pstmt = conn.prepareStatement(query);
+
+                for (int i = 0; i < numPassengers; i++) {
+                    String name = nameFields[i].getText();
+                    String age = ageFields[i].getText();
+                    String gender = maleRadioButtons[i].isSelected() ? "Male" : "Female";
+                    String ticketType = (String) ticketTypeDropdowns[i].getSelectedItem();
+
+                    pstmt.setString(1, name);
+                    pstmt.setInt(2, Integer.parseInt(age));
+                    pstmt.setString(3, gender);
+                    pstmt.setString(4, ticketType);
+                    pstmt.setString(5, sourceLocation);
+                    pstmt.setString(6, destinationLocation);
+
+                    pstmt.executeUpdate();
+                }
+
+                outputArea.setText("Passenger details successfully stored in the database.");
+
+            } catch (SQLException ex) {
+                outputArea.setText("Error storing passenger details in the database: " + ex.getMessage());
+                ex.printStackTrace();
+            }
+        } else if (e.getSource() == resetButton) {
+            // Reset the form
+            passengerPanel.removeAll();
+            outputArea.setText("");
+
+            numPassengersField.setText("");
+            sourceField.setText("");
+            destinationField.setText("");
+            revalidate();
+            repaint();
+        }
+    }
+
+    public static void main(String[] args) {
+        new TicketBookingForm();
+    }
+}
